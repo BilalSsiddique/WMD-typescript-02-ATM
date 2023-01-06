@@ -1,5 +1,5 @@
 {
-  "name": "typescript-atm",
+  "name": "typescript-02-atm",
   "version": "1.0.0",
   "description": "",
   "bin": "./public/index.js",
