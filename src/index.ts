@@ -2,10 +2,10 @@
 import chalk from 'chalk'
 import chalkAnimation from 'chalk-animation';
 import inquirer from 'inquirer'
-import CheckboxPrompt from 'inquirer/lib/prompts/checkbox';
 import {createSpinner} from 'nanospinner'
+import userValidation  from './helper.js';
 
-let availableBalance = Math.round(Math.random()*1000)
+let availableBalance = Math.round(Math.random()*10000)
 let userObj = {userId:'',userPin:0,availableBalance}
 
 const wait = ()=> {
@@ -27,6 +27,7 @@ async function welcome(){
       ${chalk.magentaBright('DONE!')}`)
 }
 
+
 function balanceInquiry(){
     console.log(` 
     Account Details:`)
@@ -35,13 +36,70 @@ function balanceInquiry(){
         Available Balance : ${userObj.availableBalance}
     `)}`)
 }
-function validation(id:string,pin:number ):void{
-    const regex=/^[a-zA-Z]+$/;
-    if (!id.match(regex)) throw { TypeError:'Type of Id must be string'}
-    if (typeof pin !=='number') throw { TypeError:'Type of Pin must be number'}
-    const pinLen= Math.ceil(Math.log10(pin )) 
-    if (pinLen!==4) throw { PinError:'Pin length should be 4'}      
+
+async function withdrawlAmount() {
+    const ask =  await inquirer.prompt({
+        name: 'ask',
+        type : 'number',
+        message : 'Specify Amount in multiple of 5 : ',
+        default() {
+        return this.name;
+    }
+    })
+    const amount:number = ask.ask
+    try {
+        userValidation.userAmountValidation(amount,userObj.availableBalance)
+        userObj.availableBalance= userObj.availableBalance - amount
+        balanceInquiry()
+        await atm()
+    } catch (error) {
+        console.log(error)
+        await withdrawlAmount()
+    }
+
+
 }
+async function depositAmount() {
+    const ask =  await inquirer.prompt({
+        name: 'ask',
+        type : 'number',
+        message : 'Specify Amount in multiple of 5 : ',
+        default() {
+        return this.name;
+    }
+    })
+    const amount:number = ask.ask
+    try {
+        userValidation.userAmountValidation(amount)
+        userObj.availableBalance= userObj.availableBalance + amount
+        balanceInquiry()
+        await atm()
+    } catch (error) {
+        console.log(error)
+        await depositAmount()
+    }
+
+
+}
+
+
+async function ask(){
+    const ask =  await inquirer.prompt({
+        name: 'ask',
+        type : 'input',
+        message : 'Do you want to perform another Transaction? "Y" for yes "N" for No',
+        default() {
+        return 'Y';
+    }
+    })
+    const asked:string = ask.ask
+    if (asked==='y' || asked === 'Y')  await atm() 
+    else  {
+        console.log(`${chalk.yellowBright(`Good Bye ${userObj.userId} :) !`)}`)
+        process.exit(0)
+    }
+}
+
 async function main(){
     const getUserId = await inquirer.prompt({
         name: 'userId',
@@ -65,27 +123,41 @@ async function main(){
     // console.log(userObj.userId,userObj.userPin)
     // validation(userObj.userId,userObj.userPin).catch((err)=> console.log(err))
     try {
-        validation(userObj.userId,userObj.userPin) 
+        userValidation.userValidation(userObj.userId,userObj.userPin) 
     } catch (error) {
         console.log(error)
-        main()
+        await main()
     }
+
+    await atm()
     
+}
+
+async function atm(){
     const atmOptions = await inquirer.prompt({
         name: 'atmOption',
         type:'list',
         message: 'Choose from the Given Options: ',
-        choices:["Withdrawl",'Balance_Enquiry','Deposit']
+        choices:['Withdrawl','Balance_Enquiry','Deposit','exit']
     })
-
+    // will use switch case
     console.log(atmOptions.atmOption)
-    
-
-
-
+    switch (atmOptions.atmOption) {
+        case 'Balance_Enquiry':
+            balanceInquiry()
+            await ask()
+            break;
+        case 'Withdrawl':
+            await withdrawlAmount()
+            break;
+        case 'Deposit':
+            await depositAmount()
+            break;
+        default:
+            console.log('Good Bye Thank you for using ATM')
+            process.exit(0)
+    }
 }
-
-
 
 await welcome()
 await main()
